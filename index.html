@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Telemetry Dashboard</title>
+<script type="text/javascript" src="/eel.js"></script>
+
+<style>
+    body {
+        background-color: black;
+        /*background-image: url('le_car.png');*/
+        background-size: cover; 
+        background-repeat: no-repeat; 
+        background-attachment: fixed; 
+        backdrop-filter: blur(6.7px); /* Blurs the background image */
+        padding-bottom: 1000px;
+    }
+
+    #header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+
+    #status {
+        padding: 5px 15px;
+        border-radius: 5px;
+        background: #333;
+        font-weight: bold;
+    }
+
+    button {
+        background: #333;
+        color: #fff;
+        border: 1px solid #555;
+        padding: 6px 12px;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    button:hover {
+        background: #4CAF50;
+    }
+
+    /* SPA pages */
+    .page {
+        display: none;
+    }
+
+    .page.active {
+        display: block;
+    }
+
+    /* Dashboard grid */
+    .dashboard {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 10px;
+    }
+
+    .card {
+        background: #2d2d2d;
+        padding: 10px;
+        border-radius: 8px;
+        text-align: center;
+        border: 1px solid #444;
+    }
+
+    .card2 {
+        background: #d21414;
+        padding: 10px;
+        border-radius: 8px;
+        text-align: center;
+        border: 1px solid #444;
+    }
+
+    .label {
+        font-size: 12px;
+        color: #aaa;
+        margin-bottom: 5px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .value {
+        font-size: 20px;
+        font-weight: bold;
+        color: #4CAF50;
+    }
+</style>
+</head>
+
+<body>
+
+<!-- HEADER -->
+<div id="header">
+    <h2>FE Car Data</h2>
+    <div>
+        <button onclick="showPage('page1')">Driver + Wheel Sensors</button>
+        <button onclick="showPage('page2')">Thermals</button>
+        <button onclick="showPage('page3')">Electricals/Powertrain</button>
+        <button onclick="showPage('page4')">Driver Inputs</button>
+        <button onclick="showPage('page5')">Safety/Faults</button>
+        <button onclick="showPage('page6')">MISC Sensors</button>
+        <button onclick="showPage('page7')">Fuses</button>
+        <button onclick="showPage('page8')">File Transfer</button>
+        <button onclick="showPage('page9')">Code Switch</button>
+        <button onclick="showPage('page10')">Live Data</button>
+
+    </div>
+    <div id="status" style="color: yellow;">Connecting...</div>
+</div>
+
+<!-- PAGE 1 - Driver + Wheel Sensors -->
+<div id="page1" class="page active">
+    <div id="dashboard-page1" class="dashboard"></div>
+</div>
+
+<!-- PAGE 2 - Thermals -->
+<div id="page2" class="page">
+    <div id="dashboard-page2" class="dashboard"></div>
+</div>
+
+<!-- PAGE 3 - Electricals/Powertrain -->
+<div id="page3" class="page">
+    <div id="dashboard-page3" class="dashboard"></div>
+</div>
+
+<!-- PAGE 4 - Driver Inputs -->
+<div id="page4" class="page">
+    <div id="dashboard-page4" class="dashboard"></div>
+</div>
+
+<!-- PAGE 5 - Safety Faults-->
+<div id="page5" class="page">
+    <div id="dashboard-page5" class="dashboard"></div>
+</div>
+
+<!-- PAGE 6 - MISC Sensors -->
+<div id="page6" class="page">
+    <div id="dashboard-page6" class="dashboard"></div>
+</div>
+
+<!-- PAGE 7 - Fuses -->
+<div id="page7" class="page">
+    <div id="dashboard-page7" class="dashboard"></div>
+</div>
+
+<!-- PAGE 8 - File Transfer -->
+<div id="page8" class="page">
+    <div id="dashboard-page8" class="dashboard"></div>
+</div>
+
+<!-- PAGE 9 - Code Switch -->
+<div id="page9" class="page">
+    <div id="dashboard-page9" class="dashboard"></div>
+    <form action="/submit" method="post">
+
+        <select name="File Name" required>
+            <option>Pedal_lo</option>
+            <option>Accel_min</option>
+            <option>Coast_lo</option>
+            <option>Coast_hi</option>
+            <option>Accel_max</option>
+            <option>Pedal_hi</option>
+            <option>Sus_travel</option>
+            <option>Wheel_spd</option>
+            <option>Rotor_temp</option>
+            <option>Wheel_tmp</option>
+            <option>Steering_ang</option>
+            <option>Air_pressure</option>
+            <option>Fluid_tmp</option>
+            <option>Fuse_box</option>
+
+        </select>
+
+        <input type="text" name="Value" placeholder="Enter the changed value" required>
+        <input type="submit" value="Submit">
+
+    </form>
+
+</div>
+
+<!-- PAGE 10 - Live Data -->
+<div id="page10" class="page">
+    <div id="dashboard-page10" class="dashboard"></div>
+</div>
+
+
+<script>
+/* ===============================
+   COLUMN DEFINITIONS
+   =============================== */
+
+// Full data order from Python
+const columnNames = [
+        'Time', 'Steering Ang', 'Motor Spd', 'Wheel Spd FR', 'Wheel Spd FL', 'Wheel Spd BR', 'Wheel Spd BL', 
+        'Suspension FR', 'Suspension FL', 'Suspension BR', 'Suspension BL',
+        'Rotor Temp FR', 'Rotor Temp FL', 'Rotor Temp BR', 'Rotor Temp BL', 
+        'Wheel Temp FR', 'Wheel Temp FL', 'Wheel Temp BR', 'Wheel Temp BL',
+        'Motor Temp', 'MC Temp', 'Battery Temp', 'LV Battery Temp', 'Fluid Temp BL',
+        'Battery Voltage', 'Battery Current', 'Battery SOC', 'DC Bus',
+        'Phase A', 'Phase B', 'Phase C',
+        'Cmd Torque', 'Torque FBK', 'Torque', 'Motor Spd', 'Drive Mode',
+        'Throttle 1 Raw', 'Throttle 2 Raw', 'Throttle 1', 'Throttle 2', 'Throttle Diff',
+        'Front Brake', 'Rear Brake', 'High Sense', 'Soft Plaus', 'Plaus Fault',
+        'AMS Fault', 'IMD Fault', 'BSPD Fault', 'Hard Brake', 'Shut Down', 'Car State',
+        'Brake Light', 'Ign 1', 'Ign 2',
+        'QBAI', 'Air Pres FL', 'Air Pres BR', 'Extra 1',
+        'Fuse 1', 'Fuse 2', 'Fuse 3', 'Fuse 4', 'Fuse 5', 'Fuse 6',
+        'Fuse 7', 'Fuse 8', 'Fuse 9', 'Fuse 10', 'Fuse 11', 'Fuse 12', 'Fuse 13'
+];
+
+const pages = {
+    // Driver + Wheel Sensors
+    page1: [
+        'Time', 'Steering Ang', 'Motor Spd', 'Wheel Spd FR', 'Wheel Spd FL', 'Wheel Spd BR', 'Wheel Spd BL', 
+        'Suspension FR', 'Suspension FL', 'Suspension BR', 'Suspension BL'
+    ],
+    // Thermal Info
+    page2: [
+        'Rotor Temp FR', 'Rotor Temp FL', 'Rotor Temp BR', 'Rotor Temp BL', 
+        'Wheel Temp FR', 'Wheel Temp FL', 'Wheel Temp BR', 'Wheel Temp BL',
+        'Motor Temp', 'MC Temp', 'Battery Temp', 'LV Battery Temp', 'Fluid Temp BL'
+    ],
+    // Electrical / Powertrain
+    page3: [
+        'Battery Voltage', 'Battery Current', 'Battery SOC', 'DC Bus',
+        'Phase A', 'Phase B', 'Phase C',
+        'Cmd Torque', 'Torque FBK', 'Torque', 'Motor Spd', 'Drive Mode'
+    ],
+    // Driver Inputs
+    page4: [
+        'Throttle 1 Raw', 'Throttle 2 Raw', 'Throttle 1', 'Throttle 2', 'Throttle Diff',
+        'Front Brake', 'Rear Brake', 'High Sense', 'Soft Plaus', 'Plaus Fault'
+    ],
+    // Safety / Faults
+    page5: [
+        'AMS Fault', 'IMD Fault', 'BSPD Fault', 'Hard Brake', 'Shut Down', 'Car State',
+        'Brake Light', 'Ign 1', 'Ign 2'
+    ],
+    // MISC Sensors
+    page6: [
+        'QBAI', 'Air Pres FL', 'Air Pres BR', 'Extra 1'
+    ],
+    // Fuse Monitoring
+    page7: [
+        'Fuse 1', 'Fuse 2', 'Fuse 3', 'Fuse 4', 'Fuse 5', 'Fuse 6',
+        'Fuse 7', 'Fuse 8', 'Fuse 9', 'Fuse 10', 'Fuse 11', 'Fuse 12', 'Fuse 13'
+    ], 
+    page8: [],
+    page9: [],
+    page10: []
+
+};
+
+
+/* ===============================
+   BUILD DASHBOARDS
+   =============================== */
+let currentPage = "page1"; // default
+
+function buildDashboard(pageId) {
+    const container = document.getElementById(`dashboard-${pageId}`);
+    container.innerHTML = "";
+
+    pages[pageId].forEach(label => {
+        const index = columnNames.indexOf(label);
+        if (index === -1) return;
+
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `
+            <div class="label">${label}</div>
+            <div class="value" id="${pageId}-val-${index}">-</div>
+        `;
+        container.appendChild(card);
+    });
+}
+
+buildDashboard("page1");
+buildDashboard("page2");
+buildDashboard("page3");
+buildDashboard("page4");
+buildDashboard("page5");
+buildDashboard("page6");
+buildDashboard("page7");
+buildDashboard("page8");
+buildDashboard("page9");
+buildDashboard("page10");
+
+
+/* ===============================
+   PAGE SWITCHING
+   =============================== */
+
+
+function showPage(pageId) {
+    document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+    document.getElementById(pageId).classList.add("active");
+
+    currentPage = pageId;
+}
+
+/* ===============================
+   PYTHON → JS (EEL)
+   =============================== */
+
+eel.expose(update_status);
+function update_status(msg, color) {
+    const el = document.getElementById("status");
+    el.innerText = msg;
+    el.style.color = color;
+}
+
+eel.expose(update_sensor_data);
+function update_sensor_data(data) {
+    // Only update visible page
+    document.querySelectorAll(".page.active .value").forEach(el => {
+        const index = el.id.split("-").pop();
+        el.innerText = data[index];
+    });
+}
+</script>
+
+</body>
+</html>>
